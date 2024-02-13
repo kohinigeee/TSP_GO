@@ -76,3 +76,102 @@ func Do2Opt(ans *TspAnswer, idx1, idx2 AnswerIndexT) {
 		ans.Order = slicecol.Reverse[tspinst.PointIndexT](ans.Order, int(next2), int(idx1))
 	}
 }
+
+type AnswerMoveFunc func(ans *TspAnswer) bool
+
+func MoveBestNeighborBy2Opt(ans *TspAnswer) (isMoved bool) {
+	if !ans.IsCalculatedScore() {
+		ans.CalcScore()
+	}
+
+	bestDif := tspinst.EcDistance(0)
+	bestIdx1 := AnswerIndexT(-1)
+	bestIdx2 := AnswerIndexT(-1)
+
+	for i := 0; i < ans.Inst.PointsDim; i++ {
+		for j := i + 1; j < ans.Inst.PointsDim; j++ {
+			idx1 := AnswerIndexT(i)
+			idx2 := AnswerIndexT(j)
+			dif := Calc2OptScoreDif(ans, idx1, idx2)
+
+			if dif < bestDif {
+				bestDif = dif
+				bestIdx1 = idx1
+				bestIdx2 = idx2
+			}
+		}
+	}
+
+	if bestDif == 0 {
+		isMoved = false
+		return
+	}
+
+	Do2Opt(ans, bestIdx1, bestIdx2)
+	isMoved = true
+	return
+}
+
+func MoveBestNeighborBy2OptConcurrently(ans *TspAnswer) (isMoved bool) {
+	if !ans.IsCalculatedScore() {
+		ans.CalcScore()
+	}
+
+	type DifInfo struct {
+		idx1 AnswerIndexT
+		idx2 AnswerIndexT
+		dif  tspinst.EcDistance
+	}
+
+	const initialDif = tspinst.EcDistance(0)
+	bestDifInfo := DifInfo{idx1: -1, idx2: -1, dif: initialDif}
+
+	difInfoCh := make(chan DifInfo)
+
+	for i := 0; i < ans.Inst.PointsDim; i++ {
+		go func(targetIdx int) {
+			tmpBestDifInfo := DifInfo{idx1: -1, idx2: -1, dif: initialDif}
+			idx1 := AnswerIndexT(targetIdx)
+			for j := 0; j < ans.Inst.PointsDim; j++ {
+				idx2 := AnswerIndexT(j)
+				dif := Calc2OptScoreDif(ans, idx1, idx2)
+				if dif < tmpBestDifInfo.dif {
+					tmpBestDifInfo = DifInfo{idx1: idx1, idx2: idx2, dif: dif}
+				}
+			}
+
+			difInfoCh <- tmpBestDifInfo
+		}(i)
+	}
+
+	for i := 0; i < ans.Inst.PointsDim; i++ {
+		tmpDifInfo := <-difInfoCh
+		if tmpDifInfo.dif == initialDif {
+			continue
+		}
+
+		if tmpDifInfo.dif < bestDifInfo.dif {
+			bestDifInfo = tmpDifInfo
+		}
+	}
+
+	if bestDifInfo.dif == initialDif {
+		isMoved = false
+		return
+	}
+
+	Do2Opt(ans, bestDifInfo.idx1, bestDifInfo.idx2)
+	isMoved = true
+	return
+}
+
+func LocalSearchBy2Opt(ans *TspAnswer, moveFunc AnswerMoveFunc) {
+	moveCount := 0
+	for {
+		if !moveFunc(ans) {
+			break
+		}
+		moveCount++
+		mylogger.L().Debug("LocalSearchBy2Opt", "moveCount", moveCount, "score", ans.Score)
+	}
+}

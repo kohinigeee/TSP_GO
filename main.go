@@ -9,7 +9,9 @@ import (
 func main() {
 	// アルゴリズムの細かなログの表示レベル
 	mylogger.SetAlgoLevel(slog.LevelError)
+	mylogger.SetLevel(slog.LevelInfo)
 
-	cmd.MainWithGreeding()
+	cmd.MainWithLocalSearch()
+	// cmd.MainWithGreeding()
 	// cmd.MainWithPprof()
 }

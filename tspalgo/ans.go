@@ -57,6 +57,14 @@ func (ans *TspAnswer) String() string {
 	return ansStr
 }
 
+func (ans *TspAnswer) Copy() *TspAnswer {
+	order := make([]tspinst.PointIndexT, len(ans.Order))
+	copy(order, ans.Order)
+	copiedAns := NewTspAnswer(ans.Inst, order)
+	copiedAns.Score = ans.Score
+	return copiedAns
+}
+
 func (ans *TspAnswer) PointDim() int {
 	return ans.Inst.PointsDim
 }
@@ -126,16 +134,4 @@ func (ans *TspAnswer) IsCorrectAnswer() (bool, string) {
 
 func (ans *TspAnswer) isValidOrder(idx AnswerIndexT) bool {
 	return (idx >= 0) && (idx < AnswerIndexT(ans.Inst.PointsDim))
-}
-
-func (ans *TspAnswer) Do2Opt(idx1, idx2 AnswerIndexT) {
-	if !ans.isValidOrder(idx1) || !ans.isValidOrder(idx2) {
-		panic("[TspAnswer.Do2Opt] Invalid order")
-	}
-
-	if idx1 == idx2 {
-		mylogger.L().Warn("[TspAnswer.Do2Opt] idx1 and idx2 are same idx", "idx1", idx1, "idx2", idx2)
-		return
-	}
-
 }
