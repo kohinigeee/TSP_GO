@@ -49,14 +49,15 @@ func MainWithLocalSearch() {
 	}
 	defer trace.Stop()
 
-	ctx, task := trace.NewTask(context.Background(), "MainWithLocalSearch")
-
 	wholeTimer := exetimer.MeasureStart()
+
+	//-----------直列実行-----------
+	ctx, normalTask := trace.NewTask(context.Background(), "MainSearchSequentaly")
 
 	//初期解の構築
 	initialTimer := exetimer.MeasureStart()
 	region1 := trace.StartRegion(ctx, "Region: ConstructWithGreedingByAllOrigin")
-	ans := tspalgo.ConstructWithGreedingByAllOriginConcurrently(context.Background(), tspInst)
+	ans := tspalgo.ConstructWithGreedingByAllOrigin(context.Background(), tspInst)
 	ans.CalcScore()
 	region1.End()
 	initialTimer.MeasureEnd()
@@ -67,19 +68,56 @@ func MainWithLocalSearch() {
 	//局所探索
 	localSearchTimer := exetimer.MeasureStart()
 	region2 := trace.StartRegion(ctx, "Region: LocalSearch")
-	tspalgo.LocalSearchBy2Opt(ans, tspalgo.MoveBestNeighborBy2OptConcurrently)
-	// tspalgo.LocalSearchBy2Opt(ans, tspalgo.MoveBestNeighborBy2Opt)
+	seqMoveCnt := tspalgo.LocalSearchBy2Opt(ans, tspalgo.MoveBestNeighborBy2Opt)
 	region2.End()
 	localSearchTimer.MeasureEnd()
-
-	wholeTimer.MeasureEnd()
 
 	cpAns2 := ans.Copy()
 	logger.Info("Local search was finished", "time(ms)", localSearchTimer.ElapsedMilliSeconds(), "ans", ans.String())
 
-	task.End()
+	normalTask.End()
 
-	logger.Info("Whole process was finished", "time(ms)", wholeTimer.ElapsedMilliSeconds(), "ans", ans.String())
-	logger.Info("[1] Constructing with greeding was finished", "time(ms)", initialTimer.ElapsedMilliSeconds(), "score", cpAns1.Score, "ans", cpAns1.String())
-	logger.Info("[2] Local search was finished", "time(ms)", localSearchTimer.ElapsedMilliSeconds(), "score", cpAns2.Score, "ans", cpAns2.String())
+	seqWholeTime := localSearchTimer.ElapsedMilliSeconds() + initialTimer.ElapsedMilliSeconds()
+
+	//-----------並列実行-----------
+	ctx, concurrentTask := trace.NewTask(context.Background(), "MainSearchConcurrently")
+
+	conInitialTimer := exetimer.MeasureStart()
+	region1 = trace.StartRegion(ctx, "Region: ConstructWithGreedingByAllOriginConcurrently")
+	ans = tspalgo.ConstructWithGreedingByAllOriginConcurrently(context.Background(), tspInst)
+	ans.CalcScore()
+	region1.End()
+	conInitialTimer.MeasureEnd()
+
+	cpCoInitislAns := ans.Copy()
+	logger.Info("Constructing with concurrently greeding was finished", "time(ms)", conInitialTimer.ElapsedMilliSeconds(), "ans", ans.String())
+
+	//局所探索
+	conLocalSearchTimer := exetimer.MeasureStart()
+	region2 = trace.StartRegion(ctx, "Region: LocalSearchConcurrently")
+	conMoveCnt := tspalgo.LocalSearchBy2Opt(ans, tspalgo.MoveBestNeighborBy2OptConcurrently)
+	region2.End()
+	conLocalSearchTimer.MeasureEnd()
+
+	cpCoLsearchAns := ans.Copy()
+	logger.Info("Concurrently local search was finished", "time(ms)", conLocalSearchTimer.ElapsedMilliSeconds(), "ans", ans.String())
+
+	concurrentTask.End()
+	conWholeTime := conInitialTimer.ElapsedMilliSeconds() + conLocalSearchTimer.ElapsedMilliSeconds()
+
+	wholeTimer.MeasureEnd()
+
+	//-----------結果の出力-----------
+	logger.Info("Whole process was finished", "time(ms)", wholeTimer.ElapsedMilliSeconds())
+
+	logger.Info("--------------Sequentaly-----------------------")
+
+	logger.Info("[1] Sequentaly constructing with greeding was finished", "time(ms)", initialTimer.ElapsedMilliSeconds(), "score", cpAns1.Score, "ans", cpAns1.String())
+	logger.Info("[2] Sequentaly Local search was finished", "time(ms)", localSearchTimer.ElapsedMilliSeconds(), "score", cpAns2.Score, "ans", cpAns2.String(), "moveCnt", seqMoveCnt)
+	logger.Info("[Whole] Sequentaly whole time", "time(ms)", seqWholeTime)
+
+	logger.Info("--------------Concurrently-----------------------")
+	logger.Info("[1] Concurrently constructing with greeding was finished", "time(ms)", conInitialTimer.ElapsedMilliSeconds(), "score", cpCoInitislAns.Score, "ans", cpCoInitislAns.String())
+	logger.Info("[2] Concurrently Local search was finished", "time(ms)", conLocalSearchTimer.ElapsedMilliSeconds(), "score", cpCoLsearchAns.Score, "ans", cpCoLsearchAns.String(), "moveCnt", conMoveCnt)
+	logger.Info("[Whole] Concurrently whole time", "time(ms)", conWholeTime)
 }
