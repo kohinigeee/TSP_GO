@@ -56,7 +56,7 @@ func MainWithLocalSearch() {
 	//初期解の構築
 	initialTimer := exetimer.MeasureStart()
 	region1 := trace.StartRegion(ctx, "Region: ConstructWithGreedingByAllOrigin")
-	ans := tspalgo.ConstructWithGreedingByAllOriginConcurrently(context.Background(), tspInst)
+	ans := tspalgo.ConstructWithGreedingByAllOrigin(context.Background(), tspInst)
 	ans.CalcScore()
 	region1.End()
 	initialTimer.MeasureEnd()
@@ -67,7 +67,7 @@ func MainWithLocalSearch() {
 	//局所探索
 	localSearchTimer := exetimer.MeasureStart()
 	region2 := trace.StartRegion(ctx, "Region: LocalSearch")
-	tspalgo.LocalSearchBy2Opt(ans, tspalgo.MoveBestNeighborBy2OptConcurrently)
+	tspalgo.LocalSearchBy2Opt(ans, tspalgo.MoveBestNeighborBy2Opt)
 	// tspalgo.LocalSearchBy2Opt(ans, tspalgo.MoveBestNeighborBy2Opt)
 	region2.End()
 	localSearchTimer.MeasureEnd()
@@ -79,7 +79,9 @@ func MainWithLocalSearch() {
 
 	task.End()
 
-	logger.Info("Whole process was finished", "time(ms)", wholeTimer.ElapsedMilliSeconds(), "ans", ans.String())
+	procesWholeTime := initialTimer.ElapsedMilliSeconds() + localSearchTimer.ElapsedMilliSeconds()
+
+	logger.Info("Whole process was finished", "whole-time(ms)", wholeTimer.ElapsedMilliSeconds(), "process-whole-time(ms)", procesWholeTime, "ans", ans.String())
 	logger.Info("[1] Constructing with greeding was finished", "time(ms)", initialTimer.ElapsedMilliSeconds(), "score", cpAns1.Score, "ans", cpAns1.String())
 	logger.Info("[2] Local search was finished", "time(ms)", localSearchTimer.ElapsedMilliSeconds(), "score", cpAns2.Score, "ans", cpAns2.String())
 }
