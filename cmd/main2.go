@@ -49,9 +49,10 @@ func MainWithLocalSearch() {
 	}
 	defer trace.Stop()
 
-	ctx, task := trace.NewTask(context.Background(), "MainWithLocalSearch")
-
 	wholeTimer := exetimer.MeasureStart()
+
+	//-----------直列実行-----------
+	ctx, normalTask := trace.NewTask(context.Background(), "MainSearchSequentaly")
 
 	//初期解の構築
 	initialTimer := exetimer.MeasureStart()
@@ -72,12 +73,10 @@ func MainWithLocalSearch() {
 	region2.End()
 	localSearchTimer.MeasureEnd()
 
-	wholeTimer.MeasureEnd()
-
 	cpAns2 := ans.Copy()
 	logger.Info("Local search was finished", "time(ms)", localSearchTimer.ElapsedMilliSeconds(), "ans", ans.String())
 
-	task.End()
+	normalTask.End()
 
 	procesWholeTime := initialTimer.ElapsedMilliSeconds() + localSearchTimer.ElapsedMilliSeconds()
 

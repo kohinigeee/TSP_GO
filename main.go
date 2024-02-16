@@ -11,7 +11,9 @@ func main() {
 	mylogger.SetAlgoLevel(slog.LevelError)
 	mylogger.SetLevel(slog.LevelInfo)
 
-	cmd.MainWithLocalSearch()
+	// cmd.MainWithLocalSearch()
 	// cmd.MainWithGreeding()
 	// cmd.MainWithPprof()
+
+	cmd.MainCtest()
 }

@@ -144,9 +144,25 @@ func MoveBestNeighborBy2OptConcurrently(ans *TspAnswer) (isMoved bool) {
 		}(i)
 	}
 
+	compDifInfoIdx := func(info1, info2 *DifInfo) bool {
+		if info1.idx1 != info2.idx1 {
+			return info1.idx1 < info2.idx1
+		}
+		return info1.idx2 < info2.idx2
+	}
+
 	for i := 0; i < ans.Inst.PointsDim; i++ {
 		tmpDifInfo := <-difInfoCh
-		if tmpDifInfo.dif == initialDif {
+		if tmpDifInfo.dif >= initialDif {
+			continue
+		}
+
+		// 差分が同じ場合はidx1, idx2の値が小さい方を優先する
+		//(直列実行と同じ結果になるようにするため)
+		if tmpDifInfo.dif == bestDifInfo.dif {
+			if compDifInfoIdx(&tmpDifInfo, &bestDifInfo) {
+				bestDifInfo = tmpDifInfo
+			}
 			continue
 		}
 
@@ -165,8 +181,8 @@ func MoveBestNeighborBy2OptConcurrently(ans *TspAnswer) (isMoved bool) {
 	return
 }
 
-func LocalSearchBy2Opt(ans *TspAnswer, moveFunc AnswerMoveFunc) {
-	moveCount := 0
+func LocalSearchBy2Opt(ans *TspAnswer, moveFunc AnswerMoveFunc) (moveCount int) {
+	moveCount = 0
 	for {
 		if !moveFunc(ans) {
 			break
@@ -174,4 +190,6 @@ func LocalSearchBy2Opt(ans *TspAnswer, moveFunc AnswerMoveFunc) {
 		moveCount++
 		mylogger.L().Debug("LocalSearchBy2Opt", "moveCount", moveCount, "score", ans.Score)
 	}
+
+	return
 }
